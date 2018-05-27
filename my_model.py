@@ -4,11 +4,13 @@ import time
 from datetime import timedelta
 import os
 
+# 按概率从概率最大的n个字中选一个
 def pick_top_n(preds, vocab_size, top_n=5):
     p = np.squeeze(preds)
     p[np.argsort(p)[:-top_n]] = 0
     p = p/np.sum(p) #归一化啊，不归一化怎么能叫概率呢，长点心吧
     return np.random.choice(vocab_size, 1, p=p)[0]
+
 
 class CharRNN:
     def __init__(self,num_classes, num_seqs=64, num_steps=50, lstm_size=128, num_layers=2, learning_rate=0.001,
@@ -37,6 +39,7 @@ class CharRNN:
 
         self.saver = tf.train.Saver()
 
+    # 输入
     def build_inputs(self):
         self.inputs = tf.placeholder(tf.int32, [None, self.num_steps])
         self.targets = tf.placeholder(tf.int32, [None, self.num_steps])
@@ -48,6 +51,7 @@ class CharRNN:
         else:
             self.lstm_inputs = tf.one_hot(self.inputs, self.num_classes)
 
+    # 采用embedding + 双层lstm结构 + 一层dense layer
     def build_lstm(self):
         def get_a_cell(lstm_size, keep_prob):
             lstm = tf.contrib.rnn.BasicLSTMCell(lstm_size,state_is_tuple=True)
@@ -72,12 +76,14 @@ class CharRNN:
         loss = tf.nn.softmax_cross_entropy_with_logits(logits=self.logits, labels=self.y_reshaped)
         self.loss = tf.reduce_mean(loss)
 
+    # 为了防止过拟合，采用了截断最大梯度的方法
     def build_optimizer(self):
         tvars = tf.trainable_variables()
         grads, _ = tf.clip_by_global_norm(tf.gradients(self.loss, tvars), clip_norm=self.grad_clip)
         train_op = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
         self.optim = train_op.apply_gradients(zip(grads, tvars))
 
+    # 训练
     def train(self, batch_generator, max_step, save_path, save_per_n, log_per_n):
         self.session = tf.Session()
         with self.session as sess:
@@ -109,6 +115,7 @@ class CharRNN:
                     break
             self.saver.save(sess, os.path.join(save_path, 'model'), global_step=step)
 
+    # 采样，prime是给定的开头，n_samples是要生成的字的数量
     def sample(self, n_samples, prime, vocab_size):
         samples = list(prime)
         sess = self.session

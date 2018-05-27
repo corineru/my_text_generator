@@ -4,6 +4,8 @@ import copy
 import pickle
 
 
+# 生成batch，一共有num_batch个batch，一次批量处理num_seqs行，一行num_steps个字
+# 这样可以保证num_steps个字的连续行以及batch间的连续性
 def batch_generator(arr, num_seqs, num_steps):
     arr = copy.copy(arr)
     size = num_steps * num_seqs
@@ -18,7 +20,7 @@ def batch_generator(arr, num_seqs, num_steps):
             y[:, :-1], y[:, -1] = x[:, 1:], x[:, 0]
             yield x, y
 
-
+# 将文字转化成对应数字的类
 class TextConverter:
     def __init__(self, text, max_vocab=5000, filename=None):
         if filename is not None:
@@ -63,6 +65,7 @@ class TextConverter:
             text.append(self.id_to_word(id))
         return text
 
+    # 将词典保存起来
     def save_to_file(self,filename):
         with open(filename, 'wb') as f:
             pickle.dump(self.vocab, f)
